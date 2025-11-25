@@ -344,12 +344,18 @@ export const DesignerDashboard: React.FC = () => {
                     </div>
                     <div className="flex flex-wrap gap-1 mt-1">
                       {demand.items.map((item, idx) => (
-                        <span 
-                          key={idx}
-                          className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 rounded text-xs text-slate-600 dark:text-slate-400"
-                        >
-                          {item.quantity}x {item.artTypeLabel}
-                        </span>
+                        <React.Fragment key={idx}>
+                          <span 
+                            className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 rounded text-xs text-slate-600 dark:text-slate-400"
+                          >
+                            {item.quantity}x {item.artTypeLabel}
+                          </span>
+                          {item.variationQuantity > 0 && (
+                            <span className="px-2 py-0.5 bg-purple-100 dark:bg-purple-900/30 rounded text-xs text-purple-600 dark:text-purple-400">
+                              +{item.variationQuantity} {item.variationQuantity === 1 ? 'variacao' : 'variacoes'}
+                            </span>
+                          )}
+                        </React.Fragment>
                       ))}
                     </div>
                   </td>

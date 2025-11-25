@@ -385,6 +385,13 @@ export const AdminDashboard: React.FC = () => {
                   borderRadius: '8px',
                   color: '#fff'
                 }}
+                itemStyle={{
+                  color: '#fff'
+                }}
+                labelStyle={{
+                  color: '#fff',
+                  fontWeight: 'bold'
+                }}
                 formatter={(value: number) => [
                   chartMode.startsWith('media') ? value.toFixed(1) : value,
                   chartMode.endsWith('Points') ? 'Pontos' : 'Artes'
@@ -437,6 +444,13 @@ export const AdminDashboard: React.FC = () => {
                       border: 'none',
                       borderRadius: '8px',
                       color: '#fff'
+                    }}
+                    itemStyle={{
+                      color: '#fff'
+                    }}
+                    labelStyle={{
+                      color: '#fff',
+                      fontWeight: 'bold'
                     }}
                     formatter={(value: number) => [`${value} pts`, 'Pontos']}
                   />
