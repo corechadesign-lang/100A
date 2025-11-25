@@ -3,6 +3,8 @@ import { User, ArtType, Demand, WorkSession, Feedback, Lesson, LessonProgress, S
 
 const API_URL = '';
 
+type Theme = 'light' | 'dark';
+
 interface AppContextType {
   currentUser: User | null;
   users: User[];
@@ -15,6 +17,8 @@ interface AppContextType {
   settings: SystemSettings;
   adminFilters: AdminFilters;
   loading: boolean;
+  theme: Theme;
+  toggleTheme: () => void;
   login: (name: string, password: string) => Promise<boolean>;
   logout: () => void;
   setAdminFilters: (filters: AdminFilters) => void;
@@ -64,6 +68,27 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     period: 'today',
     designerId: 'all'
   });
+  const [theme, setTheme] = useState<Theme>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('theme');
+      if (saved === 'dark' || saved === 'light') return saved;
+      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+    return 'light';
+  });
+
+  useEffect(() => {
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme(prev => prev === 'dark' ? 'light' : 'dark');
+  };
 
   const fetchData = async () => {
     try {
@@ -293,6 +318,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       settings,
       adminFilters,
       loading,
+      theme,
+      toggleTheme,
       login,
       logout,
       setAdminFilters,
