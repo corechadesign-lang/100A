@@ -23,6 +23,7 @@ interface AppContextType {
   logout: () => void;
   setAdminFilters: (filters: AdminFilters) => void;
   addDemand: (demand: Omit<Demand, 'id' | 'timestamp'>) => Promise<void>;
+  deleteDemand: (id: string) => Promise<void>;
   startWorkSession: (userId: string) => Promise<void>;
   getTodaySession: (userId: string) => WorkSession | undefined;
   addFeedback: (feedback: Omit<Feedback, 'id' | 'createdAt' | 'viewed'>) => Promise<void>;
@@ -155,6 +156,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     });
     const newDemand = await res.json();
     setDemands(prev => [newDemand, ...prev]);
+  };
+
+  const deleteDemand = async (id: string) => {
+    await fetch(`${API_URL}/api/demands/${id}`, { method: 'DELETE' });
+    setDemands(prev => prev.filter(d => d.id !== id));
   };
 
   const startWorkSession = async (userId: string) => {
@@ -324,6 +330,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       logout,
       setAdminFilters,
       addDemand,
+      deleteDemand,
       startWorkSession,
       getTodaySession,
       addFeedback,

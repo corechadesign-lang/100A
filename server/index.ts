@@ -231,7 +231,22 @@ app.post('/api/work-sessions', async (req, res) => {
   const { userId } = req.body;
   const id = `session-${Date.now()}`;
   const timestamp = Date.now();
+  
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayStart = today.getTime();
+  
   try {
+    const existing = await pool.query(
+      'SELECT * FROM work_sessions WHERE user_id = $1 AND timestamp >= $2 ORDER BY timestamp ASC LIMIT 1',
+      [userId, todayStart]
+    );
+    
+    if (existing.rows.length > 0) {
+      const s = existing.rows[0];
+      return res.json({ id: s.id, userId: s.user_id, timestamp: parseInt(s.timestamp) });
+    }
+    
     await pool.query(
       'INSERT INTO work_sessions (id, user_id, timestamp) VALUES ($1, $2, $3)',
       [id, userId, timestamp]
@@ -315,6 +330,24 @@ app.post('/api/demands', async (req, res) => {
     await client.query('ROLLBACK');
     console.error(error);
     res.status(500).json({ error: 'Erro ao criar demanda' });
+  } finally {
+    client.release();
+  }
+});
+
+app.delete('/api/demands/:id', async (req, res) => {
+  const { id } = req.params;
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query('DELETE FROM demand_items WHERE demand_id = $1', [id]);
+    await client.query('DELETE FROM demands WHERE id = $1', [id]);
+    await client.query('COMMIT');
+    res.json({ success: true });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error(error);
+    res.status(500).json({ error: 'Erro ao remover demanda' });
   } finally {
     client.release();
   }

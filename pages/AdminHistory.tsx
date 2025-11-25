@@ -56,7 +56,19 @@ export const AdminHistory: React.FC = () => {
       filteredDemands = filteredDemands.filter(d => d.userId === adminFilters.designerId);
     }
 
-    return filteredSessions.map(session => {
+    const uniqueSessions = new Map<string, typeof filteredSessions[0]>();
+    filteredSessions.forEach(session => {
+      const sessionDate = new Date(session.timestamp);
+      sessionDate.setHours(0, 0, 0, 0);
+      const key = `${session.userId}-${sessionDate.getTime()}`;
+      
+      const existing = uniqueSessions.get(key);
+      if (!existing || session.timestamp < existing.timestamp) {
+        uniqueSessions.set(key, session);
+      }
+    });
+
+    return Array.from(uniqueSessions.values()).map(session => {
       const user = users.find(u => u.id === session.userId);
       const sessionDate = new Date(session.timestamp);
       sessionDate.setHours(0, 0, 0, 0);

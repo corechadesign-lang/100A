@@ -4,7 +4,7 @@ import { Plus, Minus, Clock, Zap, TrendingUp, Trash2, ClipboardList } from 'luci
 import { DemandItem } from '../types';
 
 export const DesignerDashboard: React.FC = () => {
-  const { currentUser, artTypes, demands, addDemand, startWorkSession, getTodaySession, settings } = useApp();
+  const { currentUser, artTypes, demands, addDemand, deleteDemand, startWorkSession, getTodaySession, settings } = useApp();
   const [items, setItems] = useState<DemandItem[]>([]);
   const [selectedArtType, setSelectedArtType] = useState('');
   const [quantity, setQuantity] = useState(1);
@@ -360,7 +360,10 @@ export const DesignerDashboard: React.FC = () => {
                     <span className="font-bold text-green-600">+{demand.totalPoints}</span>
                   </td>
                   <td className="px-6 py-4 text-center">
-                    <button className="text-slate-400 hover:text-red-500 transition-colors">
+                    <button 
+                      onClick={() => deleteDemand(demand.id)}
+                      className="text-slate-400 hover:text-red-500 transition-colors"
+                    >
                       <Trash2 size={18} />
                     </button>
                   </td>
