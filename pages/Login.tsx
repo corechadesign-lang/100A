@@ -28,6 +28,25 @@ export const Login: React.FC = () => {
     e.preventDefault();
     setError('');
     
+    if (selectedRole === 'ADM') {
+      if (password !== '123456') {
+        setError('Senha incorreta');
+        return;
+      }
+      const admins = users.filter(u => u.active && u.role === 'ADM');
+      if (admins.length === 0) {
+        setError('Nenhum administrador cadastrado');
+        return;
+      }
+      setLoading(true);
+      const success = await login(admins[0].name, password);
+      setLoading(false);
+      if (!success) {
+        setError('Erro ao entrar');
+      }
+      return;
+    }
+
     if (!selectedUser) {
       setError('Selecione um perfil');
       return;
@@ -134,43 +153,56 @@ export const Login: React.FC = () => {
               </div>
             )}
 
-            <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                Selecione seu perfil
-              </label>
-              <div className="relative">
-                <select
-                  value={selectedUserId}
-                  onChange={(e) => setSelectedUserId(e.target.value)}
-                  className="w-full pl-12 pr-4 py-3.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-brand-600 focus:border-transparent outline-none transition-all appearance-none text-slate-900 dark:text-white"
-                  required
-                >
-                  <option value="">Selecione um perfil</option>
-                  {filteredUsers.map(user => (
-                    <option key={user.id} value={user.id}>{user.name}</option>
-                  ))}
-                </select>
-                <div className="absolute left-3 top-1/2 -translate-y-1/2">
-                  {selectedUser ? (
-                    <div 
-                      className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-semibold"
-                      style={{ backgroundColor: getAvatarBg(selectedUser) }}
-                    >
-                      {getInitials(selectedUser.name)}
-                    </div>
-                  ) : (
-                    <div className="w-7 h-7 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center">
-                      <User size={16} className="text-slate-400" />
-                    </div>
-                  )}
-                </div>
-                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-                  <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
+            {selectedRole === 'DESIGNER' && (
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                  Selecione seu perfil
+                </label>
+                <div className="relative">
+                  <select
+                    value={selectedUserId}
+                    onChange={(e) => setSelectedUserId(e.target.value)}
+                    className="w-full pl-12 pr-4 py-3.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-brand-600 focus:border-transparent outline-none transition-all appearance-none text-slate-900 dark:text-white"
+                    required
+                  >
+                    <option value="">Selecione um perfil</option>
+                    {filteredUsers.map(user => (
+                      <option key={user.id} value={user.id}>{user.name}</option>
+                    ))}
+                  </select>
+                  <div className="absolute left-3 top-1/2 -translate-y-1/2">
+                    {selectedUser ? (
+                      <div 
+                        className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-semibold"
+                        style={{ backgroundColor: getAvatarBg(selectedUser) }}
+                      >
+                        {getInitials(selectedUser.name)}
+                      </div>
+                    ) : (
+                      <div className="w-7 h-7 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center">
+                        <User size={16} className="text-slate-400" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                    <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
+
+            {selectedRole === 'ADM' && (
+              <div className="text-center py-4">
+                <div className="w-16 h-16 mx-auto mb-3 bg-brand-100 dark:bg-brand-900/30 rounded-full flex items-center justify-center">
+                  <Shield size={32} className="text-brand-600" />
+                </div>
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  Digite a senha de administrador para entrar
+                </p>
+              </div>
+            )}
 
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
@@ -191,7 +223,7 @@ export const Login: React.FC = () => {
 
             <button
               type="submit"
-              disabled={loading || !selectedUserId}
+              disabled={loading || (selectedRole === 'DESIGNER' && !selectedUserId)}
               className="w-full py-3.5 bg-brand-600 hover:bg-brand-700 text-white font-semibold rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-brand-600/30"
             >
               {loading ? 'Entrando...' : 'Entrar'}
