@@ -1,8 +1,18 @@
 import { Pool } from 'pg';
+import bcrypt from 'bcryptjs';
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
+
+export const hashPassword = async (password: string): Promise<string> => {
+  const salt = await bcrypt.genSalt(10);
+  return bcrypt.hash(password, salt);
+};
+
+export const comparePassword = async (password: string, hash: string): Promise<boolean> => {
+  return bcrypt.compare(password, hash);
+};
 
 export const initDatabase = async () => {
   const client = await pool.connect();
@@ -97,13 +107,14 @@ export const initDatabase = async () => {
 
     const usersCount = await client.query('SELECT COUNT(*) FROM users');
     if (parseInt(usersCount.rows[0].count) === 0) {
+      const hashedPassword = await hashPassword('123');
       await client.query(`
         INSERT INTO users (id, name, password, role, avatar_url, active) VALUES
-        ('d1', 'Designer 01 - Davi', '123', 'DESIGNER', 'https://ui-avatars.com/api/?name=Davi&background=8b5cf6&color=fff', true),
-        ('d2', 'Designer 02 - Guilherme', '123', 'DESIGNER', 'https://ui-avatars.com/api/?name=Guilherme&background=06b6d4&color=fff', true),
-        ('d3', 'Designer 03 - Paulo', '123', 'DESIGNER', 'https://ui-avatars.com/api/?name=Paulo&background=ec4899&color=fff', true),
-        ('a1', 'Administrador', '123', 'ADM', 'https://ui-avatars.com/api/?name=Admin&background=1e293b&color=fff', true)
-      `);
+        ('d1', 'Designer 01 - Davi', $1, 'DESIGNER', 'https://ui-avatars.com/api/?name=Davi&background=8b5cf6&color=fff', true),
+        ('d2', 'Designer 02 - Guilherme', $1, 'DESIGNER', 'https://ui-avatars.com/api/?name=Guilherme&background=06b6d4&color=fff', true),
+        ('d3', 'Designer 03 - Paulo', $1, 'DESIGNER', 'https://ui-avatars.com/api/?name=Paulo&background=ec4899&color=fff', true),
+        ('a1', 'Administrador', $1, 'ADM', 'https://ui-avatars.com/api/?name=Admin&background=1e293b&color=fff', true)
+      `, [hashedPassword]);
     }
 
     const artTypesCount = await client.query('SELECT COUNT(*) FROM art_types');

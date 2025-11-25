@@ -1,10 +1,15 @@
 import express from 'express';
 import cors from 'cors';
-import pool, { initDatabase } from './db';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import pool, { initDatabase, comparePassword, hashPassword } from './db';
 import multer from 'multer';
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 const app = express();
-const PORT = 3001;
+const PORT = process.env.NODE_ENV === 'production' ? 5000 : 3001;
 
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
@@ -27,7 +32,8 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(401).json({ error: 'Usuário não encontrado' });
     }
     const user = result.rows[0];
-    if (user.password !== password) {
+    const isValidPassword = await comparePassword(password, user.password);
+    if (!isValidPassword) {
       return res.status(401).json({ error: 'Senha incorreta' });
     }
     res.json({
@@ -84,9 +90,10 @@ app.post('/api/users', async (req, res) => {
   const { name, password, role, avatarColor } = req.body;
   const id = `user-${Date.now()}`;
   try {
+    const hashedPassword = await hashPassword(password || '123');
     await pool.query(
       'INSERT INTO users (id, name, password, role, avatar_color, active) VALUES ($1, $2, $3, $4, $5, true)',
-      [id, name, password || '123', role || 'DESIGNER', avatarColor]
+      [id, name, hashedPassword, role || 'DESIGNER', avatarColor]
     );
     res.json({ id, name, role: role || 'DESIGNER', avatarColor, active: true });
   } catch (error) {
@@ -98,9 +105,10 @@ app.put('/api/users/:id', async (req, res) => {
   const { id } = req.params;
   const { name, password, active, avatarColor } = req.body;
   try {
+    const hashedPassword = password ? await hashPassword(password) : null;
     await pool.query(
       'UPDATE users SET name = COALESCE($1, name), password = COALESCE($2, password), active = COALESCE($3, active), avatar_color = COALESCE($4, avatar_color) WHERE id = $5',
-      [name, password, active, avatarColor, id]
+      [name, hashedPassword, active, avatarColor, id]
     );
     res.json({ success: true });
   } catch (error) {
@@ -501,6 +509,15 @@ app.put('/api/settings', async (req, res) => {
     res.status(500).json({ error: 'Erro ao atualizar configurações' });
   }
 });
+
+if (process.env.NODE_ENV === 'production') {
+  app.use(express.static(path.join(__dirname, '../dist')));
+  app.get('*', (req, res) => {
+    if (!req.path.startsWith('/api')) {
+      res.sendFile(path.join(__dirname, '../dist/index.html'));
+    }
+  });
+}
 
 initDatabase().then(() => {
   app.listen(PORT, '0.0.0.0', () => {
