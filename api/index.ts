@@ -1,13 +1,28 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import cors from 'cors';
-import pool, { hashPassword, comparePassword } from '../api/_db';
+import { Pool } from 'pg';
+import bcrypt from 'bcryptjs';
 
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
-// Auth
-app.post('/api/auth/login', async (req, res) => {
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : undefined
+});
+
+const hashPassword = async (password: string): Promise<string> => {
+  const salt = await bcrypt.genSalt(10);
+  return bcrypt.hash(password, salt);
+};
+
+const comparePassword = async (password: string, hash: string): Promise<boolean> => {
+  return bcrypt.compare(password, hash);
+};
+
+// ============ AUTH ============
+app.post('/api/auth/login', async (req: Request, res: Response) => {
   try {
     const { name, password } = req.body;
     const result = await pool.query(
@@ -36,8 +51,8 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
-// Users
-app.get('/api/users', async (req, res) => {
+// ============ USERS ============
+app.get('/api/users', async (req: Request, res: Response) => {
   try {
     const result = await pool.query('SELECT id, name, role, avatar_url, avatar_color, active FROM users ORDER BY name');
     return res.json(result.rows.map(u => ({
@@ -53,7 +68,7 @@ app.get('/api/users', async (req, res) => {
   }
 });
 
-app.get('/api/users/designers', async (req, res) => {
+app.get('/api/users/designers', async (req: Request, res: Response) => {
   try {
     const result = await pool.query(
       "SELECT id, name, role, avatar_url, avatar_color, active FROM users WHERE role = 'DESIGNER' ORDER BY name"
@@ -71,7 +86,7 @@ app.get('/api/users/designers', async (req, res) => {
   }
 });
 
-app.post('/api/users', async (req, res) => {
+app.post('/api/users', async (req: Request, res: Response) => {
   try {
     const { name, password, role, avatarColor } = req.body;
     const id = `user-${Date.now()}`;
@@ -86,7 +101,7 @@ app.post('/api/users', async (req, res) => {
   }
 });
 
-app.put('/api/users/:id', async (req, res) => {
+app.put('/api/users/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { name, password, active, avatarColor } = req.body;
@@ -101,7 +116,7 @@ app.put('/api/users/:id', async (req, res) => {
   }
 });
 
-app.delete('/api/users/:id', async (req, res) => {
+app.delete('/api/users/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     await pool.query('UPDATE users SET active = false WHERE id = $1', [id]);
@@ -111,8 +126,8 @@ app.delete('/api/users/:id', async (req, res) => {
   }
 });
 
-// Art Types
-app.get('/api/art-types', async (req, res) => {
+// ============ ART TYPES ============
+app.get('/api/art-types', async (req: Request, res: Response) => {
   try {
     const result = await pool.query('SELECT * FROM art_types ORDER BY sort_order');
     return res.json(result.rows.map(a => ({
@@ -126,7 +141,7 @@ app.get('/api/art-types', async (req, res) => {
   }
 });
 
-app.post('/api/art-types', async (req, res) => {
+app.post('/api/art-types', async (req: Request, res: Response) => {
   try {
     const { label, points } = req.body;
     const id = `art-${Date.now()}`;
@@ -142,7 +157,7 @@ app.post('/api/art-types', async (req, res) => {
   }
 });
 
-app.put('/api/art-types/reorder', async (req, res) => {
+app.put('/api/art-types/reorder', async (req: Request, res: Response) => {
   const client = await pool.connect();
   try {
     const { artTypes } = req.body;
@@ -160,7 +175,7 @@ app.put('/api/art-types/reorder', async (req, res) => {
   }
 });
 
-app.put('/api/art-types/:id', async (req, res) => {
+app.put('/api/art-types/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { label, points, order } = req.body;
@@ -174,7 +189,7 @@ app.put('/api/art-types/:id', async (req, res) => {
   }
 });
 
-app.delete('/api/art-types/:id', async (req, res) => {
+app.delete('/api/art-types/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     await pool.query('DELETE FROM art_types WHERE id = $1', [id]);
@@ -184,8 +199,8 @@ app.delete('/api/art-types/:id', async (req, res) => {
   }
 });
 
-// Work Sessions
-app.get('/api/work-sessions', async (req, res) => {
+// ============ WORK SESSIONS ============
+app.get('/api/work-sessions', async (req: Request, res: Response) => {
   try {
     const { userId, startDate, endDate } = req.query;
     let query = 'SELECT * FROM work_sessions WHERE 1=1';
@@ -214,7 +229,7 @@ app.get('/api/work-sessions', async (req, res) => {
   }
 });
 
-app.post('/api/work-sessions', async (req, res) => {
+app.post('/api/work-sessions', async (req: Request, res: Response) => {
   try {
     const { userId } = req.body;
     const id = `session-${Date.now()}`;
@@ -240,8 +255,8 @@ app.post('/api/work-sessions', async (req, res) => {
   }
 });
 
-// Demands
-app.get('/api/demands', async (req, res) => {
+// ============ DEMANDS ============
+app.get('/api/demands', async (req: Request, res: Response) => {
   try {
     const { userId, startDate, endDate } = req.query;
     let query = 'SELECT * FROM demands WHERE 1=1';
@@ -287,7 +302,7 @@ app.get('/api/demands', async (req, res) => {
   }
 });
 
-app.post('/api/demands', async (req, res) => {
+app.post('/api/demands', async (req: Request, res: Response) => {
   const client = await pool.connect();
   try {
     const { userId, userName, items, totalQuantity, totalPoints } = req.body;
@@ -315,7 +330,7 @@ app.post('/api/demands', async (req, res) => {
   }
 });
 
-app.delete('/api/demands/:id', async (req, res) => {
+app.delete('/api/demands/:id', async (req: Request, res: Response) => {
   const client = await pool.connect();
   try {
     const { id } = req.params;
@@ -333,8 +348,8 @@ app.delete('/api/demands/:id', async (req, res) => {
   }
 });
 
-// Feedbacks
-app.get('/api/feedbacks', async (req, res) => {
+// ============ FEEDBACKS ============
+app.get('/api/feedbacks', async (req: Request, res: Response) => {
   try {
     const { designerId } = req.query;
     let query = 'SELECT * FROM feedbacks';
@@ -361,7 +376,7 @@ app.get('/api/feedbacks', async (req, res) => {
   }
 });
 
-app.post('/api/feedbacks', async (req, res) => {
+app.post('/api/feedbacks', async (req: Request, res: Response) => {
   try {
     const { designerId, designerName, adminName, imageUrls, comment } = req.body;
     const id = `feedback-${Date.now()}`;
@@ -377,7 +392,7 @@ app.post('/api/feedbacks', async (req, res) => {
   }
 });
 
-app.put('/api/feedbacks/:id/view', async (req, res) => {
+app.put('/api/feedbacks/:id/view', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const viewedAt = Date.now();
@@ -391,7 +406,7 @@ app.put('/api/feedbacks/:id/view', async (req, res) => {
   }
 });
 
-app.delete('/api/feedbacks/:id', async (req, res) => {
+app.delete('/api/feedbacks/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     await pool.query('DELETE FROM feedbacks WHERE id = $1', [id]);
@@ -401,8 +416,8 @@ app.delete('/api/feedbacks/:id', async (req, res) => {
   }
 });
 
-// Lessons
-app.get('/api/lessons', async (req, res) => {
+// ============ LESSONS ============
+app.get('/api/lessons', async (req: Request, res: Response) => {
   try {
     const result = await pool.query('SELECT * FROM lessons ORDER BY order_index');
     return res.json(result.rows.map(l => ({
@@ -418,7 +433,7 @@ app.get('/api/lessons', async (req, res) => {
   }
 });
 
-app.post('/api/lessons', async (req, res) => {
+app.post('/api/lessons', async (req: Request, res: Response) => {
   try {
     const { title, description, videoUrl } = req.body;
     const id = `lesson-${Date.now()}`;
@@ -435,7 +450,7 @@ app.post('/api/lessons', async (req, res) => {
   }
 });
 
-app.put('/api/lessons/:id', async (req, res) => {
+app.put('/api/lessons/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { title, description, videoUrl, orderIndex } = req.body;
@@ -449,7 +464,7 @@ app.put('/api/lessons/:id', async (req, res) => {
   }
 });
 
-app.delete('/api/lessons/:id', async (req, res) => {
+app.delete('/api/lessons/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     await pool.query('DELETE FROM lessons WHERE id = $1', [id]);
@@ -459,8 +474,8 @@ app.delete('/api/lessons/:id', async (req, res) => {
   }
 });
 
-// Lesson Progress
-app.get('/api/lesson-progress/:designerId', async (req, res) => {
+// ============ LESSON PROGRESS ============
+app.get('/api/lesson-progress/:designerId', async (req: Request, res: Response) => {
   try {
     const { designerId } = req.params;
     const result = await pool.query('SELECT * FROM lesson_progress WHERE designer_id = $1', [designerId]);
@@ -476,7 +491,7 @@ app.get('/api/lesson-progress/:designerId', async (req, res) => {
   }
 });
 
-app.post('/api/lesson-progress', async (req, res) => {
+app.post('/api/lesson-progress', async (req: Request, res: Response) => {
   try {
     const { lessonId, designerId } = req.body;
     const id = `progress-${Date.now()}`;
@@ -491,8 +506,8 @@ app.post('/api/lesson-progress', async (req, res) => {
   }
 });
 
-// Settings
-app.get('/api/settings', async (req, res) => {
+// ============ SETTINGS ============
+app.get('/api/settings', async (req: Request, res: Response) => {
   try {
     const result = await pool.query('SELECT * FROM system_settings WHERE id = 1');
     if (result.rows.length === 0) {
@@ -510,7 +525,7 @@ app.get('/api/settings', async (req, res) => {
   }
 });
 
-app.put('/api/settings', async (req, res) => {
+app.put('/api/settings', async (req: Request, res: Response) => {
   try {
     const { logoUrl, brandTitle, loginSubtitle, variationPoints } = req.body;
     await pool.query(
@@ -523,7 +538,18 @@ app.put('/api/settings', async (req, res) => {
   }
 });
 
-const PORT = 3001;
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Dev server running on port ${PORT}`);
+// ============ HEALTH CHECK ============
+app.get('/api/health', (req: Request, res: Response) => {
+  return res.json({ status: 'ok', timestamp: Date.now() });
 });
+
+// ============ LOCAL SERVER ============
+if (process.env.NODE_ENV !== 'production') {
+  const PORT = process.env.PORT || 3001;
+  app.listen(PORT, () => {
+    console.log(`Dev server running on port ${PORT}`);
+  });
+}
+
+// ============ VERCEL HANDLER ============
+export default app;
