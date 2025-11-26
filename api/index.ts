@@ -149,12 +149,52 @@ app.put('/api/users/:id', async (req: Request, res: Response) => {
 });
 
 app.delete('/api/users/:id', async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const client = await pool.connect();
+
   try {
-    const { id } = req.params;
-    await pool.query('UPDATE users SET active = false WHERE id = $1', [id]);
+    await client.query('BEGIN');
+
+    // Verificar se o usuário é ADM
+    const userResult = await client.query('SELECT role FROM users WHERE id = $1', [id]);
+    if (userResult.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Usuário não encontrado' });
+    }
+
+    const userRole = userResult.rows[0].role;
+    if (userRole === 'ADM') {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'Não é permitido excluir um administrador' });
+    }
+
+    // Excluir registros relacionados
+    await client.query('DELETE FROM lesson_progress WHERE designer_id = $1', [id]);
+    await client.query('DELETE FROM feedbacks WHERE designer_id = $1', [id]);
+    await client.query('DELETE FROM work_sessions WHERE user_id = $1', [id]);
+
+    // Encontrar e excluir itens de demandas relacionadas às demandas do usuário
+    const demandsResult = await client.query('SELECT id FROM demands WHERE user_id = $1', [id]);
+    const demandIds = demandsResult.rows.map(d => d.id);
+
+    if (demandIds.length > 0) {
+      await client.query('DELETE FROM demand_items WHERE demand_id = ANY($1::varchar[])', [demandIds]);
+    }
+
+    // Excluir as demandas do usuário
+    await client.query('DELETE FROM demands WHERE user_id = $1', [id]);
+
+    // Finalmente, excluir o usuário
+    await client.query('DELETE FROM users WHERE id = $1', [id]);
+
+    await client.query('COMMIT');
     return res.json({ success: true });
   } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Erro ao remover usuário e seus dados:', error);
     return res.status(500).json({ error: 'Erro ao remover usuário' });
+  } finally {
+    client.release();
   }
 });
 
