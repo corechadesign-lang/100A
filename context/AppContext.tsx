@@ -55,7 +55,19 @@ export const useApp = () => {
 };
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('currentUser');
+      if (saved) {
+        try {
+          return JSON.parse(saved);
+        } catch {
+          return null;
+        }
+      }
+    }
+    return null;
+  });
   const [users, setUsers] = useState<User[]>([]);
   const [artTypes, setArtTypes] = useState<ArtType[]>([]);
   const [demands, setDemands] = useState<Demand[]>([]);
@@ -140,13 +152,39 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       if (!res.ok) return false;
       const user = await res.json();
       setCurrentUser(user);
+      localStorage.setItem('currentUser', JSON.stringify(user));
+      
+      if (user.role === 'DESIGNER') {
+        try {
+          const sessionRes = await fetch(`${API_URL}/api/work-sessions`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: user.id })
+          });
+          if (sessionRes.ok) {
+            const session = await sessionRes.json();
+            if (session && session.id) {
+              setWorkSessions(prev => {
+                const exists = prev.some(s => s.id === session.id);
+                return exists ? prev : [session, ...prev];
+              });
+            }
+          }
+        } catch (e) {
+          console.error('Error creating work session:', e);
+        }
+      }
+      
       return true;
     } catch {
       return false;
     }
   };
 
-  const logout = () => setCurrentUser(null);
+  const logout = () => {
+    setCurrentUser(null);
+    localStorage.removeItem('currentUser');
+  };
 
   const addDemand = async (demand: Omit<Demand, 'id' | 'timestamp'>) => {
     const res = await fetch(`${API_URL}/api/demands`, {
