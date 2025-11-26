@@ -213,3 +213,10 @@ Run `npm run dev` which starts:
 - Updated `vercel.json` with rewrites to route all `/api/*` to single function
 - Removed separate serverless function files
 - Backend works both locally (Express server) and on Vercel (serverless)
+- Added localStorage persistence for user session (prevents logout on refresh)
+- Automatic work-session registration when designers log in
+- Password change functionality in admin settings (Security tab)
+- Unviewed feedback badge on designer menu
+- Full-screen image modal with navigation in feedbacks
+- **Dev-only admin login bypass**: In development (NODE_ENV !== 'production'), admin can login with plain-text password '123456'
+- **Cascade DELETE for users**: Deleting a designer removes all related records (work_sessions, demands, demand_items, feedbacks, lesson_progress) in a transaction
