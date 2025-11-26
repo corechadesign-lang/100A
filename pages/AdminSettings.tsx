@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { Settings, Users, Palette, Image, Save, Plus, X, Edit2, Trash2, GripVertical } from 'lucide-react';
+import { Settings, Users, Palette, Image, Save, Plus, X, Edit2, Trash2, GripVertical, Lock, CheckCircle, AlertCircle } from 'lucide-react';
 
 const PRESET_COLORS = [
   '#4F46E5', '#8b5cf6', '#06b6d4', '#ec4899', '#f59e0b', '#10b981', 
@@ -11,11 +11,18 @@ export const AdminSettings: React.FC = () => {
   const { 
     settings, updateSettings, 
     users, addUser, updateUser, deleteUser,
-    artTypes, addArtType, updateArtType, deleteArtType, reorderArtTypes
+    artTypes, addArtType, updateArtType, deleteArtType, reorderArtTypes,
+    currentUser
   } = useApp();
   
-  const [activeTab, setActiveTab] = useState<'brand' | 'team' | 'artTypes'>('brand');
+  const [activeTab, setActiveTab] = useState<'brand' | 'team' | 'artTypes' | 'security'>('brand');
   const [saving, setSaving] = useState(false);
+  
+  const [oldPassword, setOldPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordMessage, setPasswordMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [changingPassword, setChangingPassword] = useState(false);
 
   const [brandTitle, setBrandTitle] = useState(settings.brandTitle || '');
   const [loginSubtitle, setLoginSubtitle] = useState(settings.loginSubtitle || '');
@@ -128,10 +135,58 @@ export const AdminSettings: React.FC = () => {
     setArtPoints(10);
   };
 
+  const handleChangePassword = async () => {
+    setPasswordMessage(null);
+    
+    if (!oldPassword || !newPassword) {
+      setPasswordMessage({ type: 'error', text: 'Preencha todos os campos' });
+      return;
+    }
+    
+    if (newPassword !== confirmPassword) {
+      setPasswordMessage({ type: 'error', text: 'As senhas não conferem' });
+      return;
+    }
+    
+    if (newPassword.length < 4) {
+      setPasswordMessage({ type: 'error', text: 'A nova senha deve ter pelo menos 4 caracteres' });
+      return;
+    }
+    
+    setChangingPassword(true);
+    try {
+      const res = await fetch('/api/auth/change-password', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: currentUser?.id,
+          oldPassword,
+          newPassword
+        })
+      });
+      
+      const data = await res.json();
+      
+      if (res.ok) {
+        setPasswordMessage({ type: 'success', text: 'Senha alterada com sucesso!' });
+        setOldPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
+      } else {
+        setPasswordMessage({ type: 'error', text: data.error || 'Erro ao alterar senha' });
+      }
+    } catch (error) {
+      setPasswordMessage({ type: 'error', text: 'Erro ao conectar com o servidor' });
+    } finally {
+      setChangingPassword(false);
+    }
+  };
+
   const tabs = [
     { id: 'brand', label: 'Marca', icon: Image },
     { id: 'team', label: 'Equipe', icon: Users },
     { id: 'artTypes', label: 'Tipos de Arte', icon: Palette },
+    { id: 'security', label: 'Segurança', icon: Lock },
   ];
 
   return (
@@ -328,6 +383,77 @@ export const AdminSettings: React.FC = () => {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'security' && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 space-y-6 max-w-md">
+          <div>
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
+              Alterar Senha
+            </h3>
+            
+            {passwordMessage && (
+              <div className={`flex items-center gap-2 p-3 rounded-lg mb-4 ${
+                passwordMessage.type === 'success' 
+                  ? 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400' 
+                  : 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400'
+              }`}>
+                {passwordMessage.type === 'success' ? <CheckCircle size={20} /> : <AlertCircle size={20} />}
+                <span className="text-sm">{passwordMessage.text}</span>
+              </div>
+            )}
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                  Senha Atual
+                </label>
+                <input
+                  type="password"
+                  value={oldPassword}
+                  onChange={(e) => setOldPassword(e.target.value)}
+                  className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg"
+                  placeholder="••••••••"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                  Nova Senha
+                </label>
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg"
+                  placeholder="••••••••"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                  Confirmar Nova Senha
+                </label>
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg"
+                  placeholder="••••••••"
+                />
+              </div>
+              
+              <button
+                onClick={handleChangePassword}
+                disabled={changingPassword || !oldPassword || !newPassword || !confirmPassword || !currentUser}
+                className="flex items-center gap-2 px-6 py-3 bg-brand-600 hover:bg-brand-700 text-white font-semibold rounded-lg disabled:opacity-50 transition-colors"
+              >
+                <Lock size={20} />
+                {changingPassword ? 'Alterando...' : 'Alterar Senha'}
+              </button>
+            </div>
           </div>
         </div>
       )}
