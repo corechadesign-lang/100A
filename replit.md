@@ -42,8 +42,7 @@ Preferred communication style: Simple, everyday language.
 ### Backend Architecture
 
 **Technology Stack:**
-- Node.js with Express 5 (development)
-- Vercel Serverless Functions (production)
+- Node.js with Express 5 (single file architecture)
 - TypeScript with tsx runtime
 - PostgreSQL database with pg driver
 - bcryptjs for password hashing
@@ -51,21 +50,30 @@ Preferred communication style: Simple, everyday language.
 
 **API Design:**
 - RESTful API structure at `/api/*` endpoints
-- Dual architecture:
-  - **Development:** Express server on port 3001, Vite proxy on port 5000
-  - **Production (Vercel):** Serverless functions in `/api` directory
-- All API routes available in both `server/dev.ts` and `/api/*.ts`
+- Single serverless function (`/api/index.ts`) for Vercel Hobby plan compatibility
+- All routes in one Express app exported as Vercel handler
+- Works both locally (Express server on port 3001) and on Vercel (serverless)
 
-**Serverless Functions (Vercel):**
-- `/api/_db.ts`: Database pool and password utilities
-- `/api/auth/login.ts`: User authentication
-- `/api/users/`: User CRUD operations
-- `/api/art-types/`: Art type management with reordering
-- `/api/demands/`: Demand submissions with items
-- `/api/feedbacks/`: Admin feedback system
-- `/api/lessons/`: Educational video management
-- `/api/lesson-progress/`: Track lesson views
-- `/api/settings/`: System configuration
+**API Endpoints:**
+- `POST /api/auth/login` - User authentication
+- `GET/POST /api/users` - User listing and creation
+- `GET /api/users/designers` - List designers only
+- `PUT/DELETE /api/users/:id` - User update and delete
+- `GET/POST /api/art-types` - Art type management
+- `PUT /api/art-types/reorder` - Reorder art types
+- `PUT/DELETE /api/art-types/:id` - Art type update and delete
+- `GET/POST /api/work-sessions` - Work session management
+- `GET/POST /api/demands` - Demand submissions
+- `DELETE /api/demands/:id` - Remove demand
+- `GET/POST /api/feedbacks` - Feedback management
+- `PUT /api/feedbacks/:id/view` - Mark feedback as viewed
+- `DELETE /api/feedbacks/:id` - Remove feedback
+- `GET/POST /api/lessons` - Lesson management
+- `PUT/DELETE /api/lessons/:id` - Lesson update and delete
+- `GET /api/lesson-progress/:designerId` - Get progress
+- `POST /api/lesson-progress` - Save progress
+- `GET/PUT /api/settings` - System settings
+- `GET /api/health` - Health check
 
 **Database Schema:**
 - **users**: Stores designer and admin accounts with hashed passwords, avatar customization, and active status
@@ -114,8 +122,11 @@ Preferred communication style: Simple, everyday language.
   "buildCommand": "vite build",
   "outputDirectory": "dist",
   "framework": "vite",
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api" }
+  ],
   "functions": {
-    "api/**/*.ts": {
+    "api/index.ts": {
       "memory": 1024,
       "maxDuration": 10
     }
@@ -131,12 +142,12 @@ Preferred communication style: Simple, everyday language.
 **Deploy Steps:**
 1. Connect repository to Vercel
 2. Configure environment variables (DATABASE_URL)
-3. Deploy - Vercel auto-detects Vite and serverless functions
+3. Deploy - Vercel auto-detects Vite and the single serverless function
 
 ### Local Development
 
 Run `npm run dev` which starts:
-1. Express API server on port 3001 (`server/dev.ts`)
+1. Express API server on port 3001 (`api/index.ts`)
 2. Vite dev server on port 5000 with proxy to API
 
 ## External Dependencies
@@ -151,8 +162,7 @@ Run `npm run dev` which starts:
 - `tailwindcss`: Utility-first CSS framework (loaded via CDN in development)
 
 **Backend:**
-- `express`: Web framework (development server)
-- `@vercel/node`: Vercel serverless functions runtime
+- `express`: Web framework
 - `pg`: PostgreSQL client
 - `bcryptjs`: Password hashing
 - `cors`: Cross-origin resource sharing
@@ -198,7 +208,8 @@ Run `npm run dev` which starts:
 
 ## Recent Changes
 
-- Migrated backend to dual architecture: Express for development, Vercel serverless for production
-- Created `/api` directory with all serverless functions
-- Updated `vercel.json` for Vite + serverless deployment
-- Maintained full API compatibility between development and production environments
+- Consolidated all serverless functions into single `/api/index.ts` file
+- Compatible with Vercel Hobby plan (max 12 functions limit)
+- Updated `vercel.json` with rewrites to route all `/api/*` to single function
+- Removed separate serverless function files
+- Backend works both locally (Express server) and on Vercel (serverless)
