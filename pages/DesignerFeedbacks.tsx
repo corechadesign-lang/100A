@@ -1,12 +1,36 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { MessageSquare, Eye, Clock } from 'lucide-react';
+import { MessageSquare, Eye, Clock, X, ChevronLeft, ChevronRight } from 'lucide-react';
 
 export const DesignerFeedbacks: React.FC = () => {
   const { currentUser, feedbacks, markFeedbackViewed } = useApp();
+  const [selectedImages, setSelectedImages] = useState<string[]>([]);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   const myFeedbacks = feedbacks.filter(f => f.designerId === currentUser?.id);
   const unviewedCount = myFeedbacks.filter(f => !f.viewed).length;
+
+  const openImageModal = (images: string[], index: number) => {
+    setSelectedImages(images);
+    setCurrentImageIndex(index);
+  };
+
+  const closeImageModal = () => {
+    setSelectedImages([]);
+    setCurrentImageIndex(0);
+  };
+
+  const nextImage = () => {
+    setCurrentImageIndex(prev => 
+      prev < selectedImages.length - 1 ? prev + 1 : 0
+    );
+  };
+
+  const prevImage = () => {
+    setCurrentImageIndex(prev => 
+      prev > 0 ? prev - 1 : selectedImages.length - 1
+    );
+  };
 
   const handleView = async (id: string) => {
     await markFeedbackViewed(id);
@@ -81,15 +105,13 @@ export const DesignerFeedbacks: React.FC = () => {
                 {feedback.imageUrls && feedback.imageUrls.length > 0 && (
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
                     {feedback.imageUrls.map((url, idx) => (
-                      <a 
+                      <button 
                         key={idx} 
-                        href={url} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="block aspect-video rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-800"
+                        onClick={() => openImageModal(feedback.imageUrls!, idx)}
+                        className="block aspect-video rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-800 cursor-pointer hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-brand-500"
                       >
                         <img src={url} alt={`Imagem ${idx + 1}`} className="w-full h-full object-cover" />
-                      </a>
+                      </button>
                     ))}
                   </div>
                 )}
@@ -112,6 +134,53 @@ export const DesignerFeedbacks: React.FC = () => {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {selectedImages.length > 0 && (
+        <div 
+          className="fixed inset-0 bg-black/90 flex items-center justify-center z-50"
+          onClick={closeImageModal}
+        >
+          <button
+            onClick={closeImageModal}
+            className="absolute top-4 right-4 p-2 text-white hover:bg-white/20 rounded-full transition-colors"
+          >
+            <X size={32} />
+          </button>
+
+          {selectedImages.length > 1 && (
+            <>
+              <button
+                onClick={(e) => { e.stopPropagation(); prevImage(); }}
+                className="absolute left-4 p-3 text-white hover:bg-white/20 rounded-full transition-colors"
+              >
+                <ChevronLeft size={32} />
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); nextImage(); }}
+                className="absolute right-4 p-3 text-white hover:bg-white/20 rounded-full transition-colors"
+              >
+                <ChevronRight size={32} />
+              </button>
+            </>
+          )}
+
+          <div 
+            className="max-w-4xl max-h-[90vh] p-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img 
+              src={selectedImages[currentImageIndex]} 
+              alt={`Imagem ${currentImageIndex + 1}`}
+              className="max-w-full max-h-[85vh] object-contain rounded-lg"
+            />
+            {selectedImages.length > 1 && (
+              <p className="text-center text-white mt-4">
+                {currentImageIndex + 1} de {selectedImages.length}
+              </p>
+            )}
+          </div>
         </div>
       )}
     </div>

@@ -19,7 +19,7 @@ interface LayoutProps {
 }
 
 export const Layout: React.FC<LayoutProps> = ({ children }) => {
-  const { currentUser, logout, settings, theme, toggleTheme } = useApp();
+  const { currentUser, logout, settings, theme, toggleTheme, feedbacks } = useApp();
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
@@ -30,19 +30,23 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   };
 
   const isAdmin = currentUser?.role === 'ADM';
+  
+  const unviewedFeedbackCount = feedbacks.filter(
+    f => f.designerId === currentUser?.id && !f.viewed
+  ).length;
 
   const designerLinks = [
-    { to: '/designer', icon: LayoutDashboard, label: 'Dashboard' },
-    { to: '/designer/feedbacks', icon: MessageSquare, label: 'Feedbacks' },
-    { to: '/designer/lessons', icon: GraduationCap, label: 'Aulas' },
+    { to: '/designer', icon: LayoutDashboard, label: 'Dashboard', badge: 0 },
+    { to: '/designer/feedbacks', icon: MessageSquare, label: 'Feedbacks', badge: unviewedFeedbackCount },
+    { to: '/designer/lessons', icon: GraduationCap, label: 'Aulas', badge: 0 },
   ];
 
   const adminLinks = [
-    { to: '/admin', icon: LayoutDashboard, label: 'Dashboard' },
-    { to: '/admin/history', icon: History, label: 'Histórico' },
-    { to: '/admin/feedbacks', icon: MessageSquare, label: 'Feedbacks' },
-    { to: '/admin/lessons', icon: GraduationCap, label: 'Aulas' },
-    { to: '/admin/settings', icon: Settings, label: 'Configurações' },
+    { to: '/admin', icon: LayoutDashboard, label: 'Dashboard', badge: 0 },
+    { to: '/admin/history', icon: History, label: 'Histórico', badge: 0 },
+    { to: '/admin/feedbacks', icon: MessageSquare, label: 'Feedbacks', badge: 0 },
+    { to: '/admin/lessons', icon: GraduationCap, label: 'Aulas', badge: 0 },
+    { to: '/admin/settings', icon: Settings, label: 'Configurações', badge: 0 },
   ];
 
   const links = isAdmin ? adminLinks : designerLinks;
@@ -84,7 +88,16 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                   `}
                 >
                   <link.icon size={20} />
-                  <span className="font-medium">{link.label}</span>
+                  <span className="font-medium flex-1">{link.label}</span>
+                  {link.badge > 0 && (
+                    <span className={`px-2 py-0.5 text-xs font-semibold rounded-full ${
+                      isActive 
+                        ? 'bg-white text-brand-600' 
+                        : 'bg-red-500 text-white'
+                    }`}>
+                      {link.badge}
+                    </span>
+                  )}
                 </Link>
               );
             })}
