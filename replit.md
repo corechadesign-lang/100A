@@ -42,18 +42,30 @@ Preferred communication style: Simple, everyday language.
 ### Backend Architecture
 
 **Technology Stack:**
-- Node.js with Express 5
+- Node.js with Express 5 (development)
+- Vercel Serverless Functions (production)
 - TypeScript with tsx runtime
 - PostgreSQL database with pg driver
 - bcryptjs for password hashing
-- Multer for file upload handling
 - CORS enabled for cross-origin requests
 
 **API Design:**
 - RESTful API structure at `/api/*` endpoints
-- Concurrent development setup (server on port 3001, Vite dev on port 5000)
-- Vite proxy configuration for API requests during development
-- Production mode serves both API and static frontend from single port (5000)
+- Dual architecture:
+  - **Development:** Express server on port 3001, Vite proxy on port 5000
+  - **Production (Vercel):** Serverless functions in `/api` directory
+- All API routes available in both `server/dev.ts` and `/api/*.ts`
+
+**Serverless Functions (Vercel):**
+- `/api/_db.ts`: Database pool and password utilities
+- `/api/auth/login.ts`: User authentication
+- `/api/users/`: User CRUD operations
+- `/api/art-types/`: Art type management with reordering
+- `/api/demands/`: Demand submissions with items
+- `/api/feedbacks/`: Admin feedback system
+- `/api/lessons/`: Educational video management
+- `/api/lesson-progress/`: Track lesson views
+- `/api/settings/`: System configuration
 
 **Database Schema:**
 - **users**: Stores designer and admin accounts with hashed passwords, avatar customization, and active status
@@ -92,6 +104,41 @@ Preferred communication style: Simple, everyday language.
 - Designer-specific filters for history and analytics
 - Computed aggregations for dashboard metrics (total points, arts, sessions)
 
+## Deployment
+
+### Vercel Deployment
+
+**Configuration (`vercel.json`):**
+```json
+{
+  "buildCommand": "vite build",
+  "outputDirectory": "dist",
+  "framework": "vite",
+  "functions": {
+    "api/**/*.ts": {
+      "memory": 1024,
+      "maxDuration": 10
+    }
+  }
+}
+```
+
+**Database Setup:**
+1. Create a Neon PostgreSQL database
+2. Import `database_export.sql` schema
+3. Add `DATABASE_URL` to Vercel environment variables
+
+**Deploy Steps:**
+1. Connect repository to Vercel
+2. Configure environment variables (DATABASE_URL)
+3. Deploy - Vercel auto-detects Vite and serverless functions
+
+### Local Development
+
+Run `npm run dev` which starts:
+1. Express API server on port 3001 (`server/dev.ts`)
+2. Vite dev server on port 5000 with proxy to API
+
 ## External Dependencies
 
 ### Third-Party Libraries
@@ -104,12 +151,11 @@ Preferred communication style: Simple, everyday language.
 - `tailwindcss`: Utility-first CSS framework (loaded via CDN in development)
 
 **Backend:**
-- `express`: Web framework
+- `express`: Web framework (development server)
+- `@vercel/node`: Vercel serverless functions runtime
 - `pg`: PostgreSQL client
 - `bcryptjs`: Password hashing
-- `multer`: Multipart form data handling (image uploads)
 - `cors`: Cross-origin resource sharing
-- `dotenv`: Environment variable management
 
 **Development Tools:**
 - `vite`: Build tool and dev server
@@ -124,14 +170,13 @@ Preferred communication style: Simple, everyday language.
 **PostgreSQL:**
 - Primary data store for all application data
 - Connection via `DATABASE_URL` environment variable
-- Schema initialization on first run
-- Supports BIGINT timestamps, JSON-like data through relational design
+- SSL enabled for production (Neon/Vercel)
+- Schema available in `database_export.sql`
 
 ### Asset Handling
 
 **Image Storage:**
 - Base64 encoding for logo and feedback images stored directly in database
-- Multer handles multipart uploads with 10MB limit
 - Avatar URLs use ui-avatars.com API for generated avatars with custom colors
 
 ### External APIs
@@ -149,6 +194,11 @@ Preferred communication style: Simple, everyday language.
 ### Environment Configuration
 
 **Required Environment Variables:**
-- `DATABASE_URL`: PostgreSQL connection string
-- `GEMINI_API_KEY`: (Referenced in config but not actively used in current codebase)
-- `NODE_ENV`: Production vs development mode switching
+- `DATABASE_URL`: PostgreSQL connection string (with SSL for production)
+
+## Recent Changes
+
+- Migrated backend to dual architecture: Express for development, Vercel serverless for production
+- Created `/api` directory with all serverless functions
+- Updated `vercel.json` for Vite + serverless deployment
+- Maintained full API compatibility between development and production environments
